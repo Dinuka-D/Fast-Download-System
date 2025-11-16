@@ -1,0 +1,10 @@
+# Dependencies
+/node_modules
+
+# Environment file
+.env
+
+# Temporary files
+/uploads
+/downloads
+/backup

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TorrentDrive - Fast Torrent to Google Drive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1f2937, #111827); /* Darker, modern background */
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .header { 
+            text-align: center; 
+            color: #f9fafb;
+            margin-bottom: 40px;
+        }
+        .header h1 { 
+            font-size: 2.5rem; 
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        .header p { 
+            opacity: 0.8; 
+            font-size: 1rem; 
+            font-weight: 400;
+        }
+        
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        /* Custom status styles */
+        .status {
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+        .connecting { background-color: #fef3c7; color: #a16207; }
+        .downloading { background-color: #bfdbfe; color: #1e40af; }
+        .uploading { background-color: #d1fae5; color: #065f46; }
+        .completed { background-color: #dbeafe; color: #1e40af; }
+        .failed { background-color: #fee2e2; color: #991b1b; }
+        .cancelled { background-color: #f3f4f6; color: #4b5563; }
+        
+        .progress-bar-container {
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+
+        .auth-prompt {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .auth-prompt h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container">
+        
+        <header class="header">
+            <h1>TorrentDrive</h1>
+            <p>Stream torrents directly to your Google Drive.</p>
+        </header>
+
+        <!-- Message/Alert Area -->
+        <div id="message" class="mb-4"></div>
+
+        <!-- Main Content Area -->
+        <div id="app-content">
+            <!-- This will hold either the auth prompt or the main app UI -->
+        </div>
+
+        <!-- Downloads List -->
+        <h2 id="downloads-header" class="text-xl font-bold text-white mb-3 hidden">Active Transfers</h2>
+        <div id="downloads-list" class="space-y-4">
+            <!-- Downloads will be rendered here -->
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let userId = null;
+
+        // Utility to handle JSON response errors
+        async function handleResponse(response) {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        // --- AUTHENTICATION & UI SWITCHING ---
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_BASE}/user`);
+                const data = await handleResponse(response);
+                
+                if (data.user) {
+                    userId = data.user.id;
+                    renderMainApp(data.user);
+                    startPolling();
+                } else {
+                    renderAuthPrompt();
+                }
+            } catch (error) {
+                showMessage(`Authentication check failed: ${error.message}`, 'failed');
+                renderAuthPrompt();
+            }
+        }
+
+        function renderAuthPrompt() {
+            document.getElementById('downloads-header').classList.add('hidden');
+            document.getElementById('app-content').innerHTML = `
+                <div class="card auth-prompt">
+                    <h2 class="text-gray-800">Sign in to start transferring torrents</h2>
+                    <p class="text-gray-600 mb-6">Connect your Google Drive to enable streaming and storage.</p>
+                    <a href="/auth/google" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                        Sign in with Google
+                    </a>
+                </div>
+            `;
+        }
+
+        function renderMainApp(user) {
+            document.getElementById('downloads-header').classList.remove('hidden');
+            
+            const userInfoHtml = `
+                <div class="flex items-center space-x-4">
+                    <img src="${user.picture}" alt="${user.name}" class="w-10 h-10 rounded-full border-2 border-blue-500">
+                    <div>
+                        <p class="font-medium text-gray-800">${user.name}</p>
+                        <p class="text-sm text-gray-500">${user.email}</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('app-content').innerHTML = `
+                <div class="card space-y-4">
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                        ${userInfoHtml}
+                        <a href="/auth/logout" class="text-sm text-red-500 hover:text-red-700 font-medium">
+                            Logout
+                        </a>
+                    </div>
+                    <div class="text-sm font-mono text-gray-500 p-2 bg-gray-50 rounded-lg">
+                        User ID: <span class="break-all">${userId}</span>
+                    </div>
+
+                    <form id="add-link-form" class="flex space-x-2">
+                        <input type="text" id="magnet-link" placeholder="Enter Magnet Link..." required
+                               class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <button type="submit" class="px-5 py-3 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition duration-150">
+                            Add Link
+                        </button>
+                    </form>
+
+                    <form id="upload-file-form" class="flex items-center space-x-2 border-t pt-4 border-gray-100">
+                        <input type="file" id="torrent-file" name="torrent" accept=".torrent" required
+                               class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <button type="submit" class="px-5 py-3 bg-indigo-500 text-white font-medium rounded-lg hover:bg-indigo-600 transition duration-150">
+                            Upload .torrent
+                        </button>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('add-link-form').addEventListener('submit', handleAddLink);
+            document.getElementById('upload-file-form').addEventListener('submit', handleUploadFile);
+
+            // Handle URL query parameters for error messages after OAuth
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            const message = urlParams.get('message');
+            if (error) {
+                showMessage(`Error during sign-in: ${decodeURIComponent(message)}`, 'failed');
+            }
+            // Clean up URL
+            history.replaceState(null, '', window.location.pathname);
+        }
+
+        // --- HANDLERS ---
+
+        async function handleAddLink(event) {
+            event.preventDefault();
+            const link = document.getElementById('magnet-link').value;
+            const button = event.submitter;
+            button.disabled = true;
+            button.textContent = 'Adding...';
+
+            try {
+                const response = await fetch(`${API_BASE}/add-link`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ link })
+                });
+                
+                const data = await handleResponse(response);
+                showMessage(data.message, 'completed');
+                document.getElementById('magnet-link').value = ''; 
+            } catch (error) {
+                showMessage(`Failed to add link: ${error.message}`, 'failed');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Add Link';
+            }
+        }
+
+        async function handleUploadFile(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('torrent-file');
+            const file = fileInput.files[0];
+            const button = event.submitter;
+            
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('torrent', file);
+
+            button.disabled = true;
+            button.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch(`${API_BASE}/upload-file`, {
+                    method: 'POST',
+                    body: formData // No Content-Type header needed for FormData
+                });
+                
+                const data = await handleResponse(response);
+                showMessage(data.message, 'completed');
+                fileInput.value = ''; // Clear file input
+            } catch (error) {
+                showMessage(`Failed to upload file: ${error.message}`, 'failed');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Upload .torrent';
+            }
+        }
+
+        async function handleCancelDownload(infoHash) {
+            if (!window.confirm('Are you sure you want to cancel this transfer?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/cancel-download/${infoHash}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await handleResponse(response);
+                showMessage(data.message, 'cancelled');
+            } catch (error) {
+                showMessage(`Failed to cancel transfer: ${error.message}`, 'failed');
+            }
+        }
+
+        // --- DATA POLLING & RENDERING ---
+
+        function formatSpeed(bytesPerSecond) {
+            if (bytesPerSecond === 0) return '0.00 B/s';
+            const i = Math.floor(Math.log(bytesPerSecond) / Math.log(1024));
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
+            return `${(bytesPerSecond / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+        }
+        
+        function getStatusText(download) {
+            switch(download.status) {
+                case 'downloading': return `⬇️ Downloading (${formatSpeed(download.downloadSpeed)}) - ${download.progress}%`;
+                case 'uploading': return `☁️ Uploading to Drive (${formatSpeed(download.uploadSpeed)}) - ${download.progress}%`;
+                case 'completed': return `✅ Completed! Ready in Drive`;
+                case 'failed': return `❌ Failed: ${download.error || 'Unknown error'}`;
+                case 'cancelled': return `🛑 Cancelled`;
+                default: return `⏳ Processing...`;
+            }
+        }
+
+        async function loadDownloads() {
+            try {
+                // Ensure auth is ready before fetching downloads
+                if (!userId) return;
+
+                const response = await fetch(`${API_BASE}/downloads`);
+                const downloads = await handleResponse(response);
+                
+                const downloadsList = document.getElementById('downloads-list');
+                
+                if (downloads.length === 0) {
+                    downloadsList.innerHTML = '<p class="text-center text-gray-400 p-8">No active transfers. Add a magnet link or .torrent file above!</p>';
+                    return;
+                }
+
+                downloadsList.innerHTML = downloads.map(download => `
+                    <div class="card">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800">${download.name}</h3>
+                                ${download.fileName ? `<p class="text-sm text-gray-500 italic">${download.fileName} (${(download.fileSize / (1024*1024*1024)).toFixed(2)} GB)</p>` : ''}
+                            </div>
+                            <button onclick="handleCancelDownload('${download.infoHash}')" 
+                                    class="ml-4 px-3 py-1 text-sm bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition duration-150 
+                                    ${(download.status === 'completed' || download.status === 'failed' || download.status === 'cancelled') ? 'hidden' : ''}">
+                                Cancel
+                            </button>
+                        </div>
+                        
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${download.progress}%"></div>
+                        </div>
+
+                        <div class="status ${download.status} mt-3">
+                            ${getStatusText(download)}
+                            ${download.driveLink ? 
+                                `<br><a href="${download.driveLink}" target="_blank" class="text-blue-600 hover:underline font-normal">🔗 Open in Drive</a>` : ''
+                            }
+                        </div>
+                        
+                        ${(download.status === 'downloading' || download.status === 'uploading') ? `
+                            <div class="text-xs text-gray-400 mt-2">
+                                Peers: ${download.peers} | Up: ${formatSpeed(download.uploadSpeed)}
+                            </div>
+                        ` : ''}
+
+                    </div>
+                `).join('');
+            } catch (error) {
+                // If the error is due to a network or server issue, don't flood the message area
+                // console.error('Failed to load downloads during polling:', error);
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            // Remove old messages
+            messageDiv.innerHTML = ''; 
+
+            const messageHtml = document.createElement('div');
+            messageHtml.className = `p-4 rounded-lg text-white font-semibold transition-opacity duration-300 shadow-lg 
+                                    ${type === 'failed' ? 'bg-red-500' : 
+                                      type === 'completed' ? 'bg-green-500' : 
+                                      type === 'cancelled' ? 'bg-gray-500' : 'bg-blue-500'}`;
+            messageHtml.textContent = text;
+            
+            messageDiv.appendChild(messageHtml);
+
+            setTimeout(() => {
+                messageHtml.style.opacity = 0;
+                setTimeout(() => messageDiv.innerHTML = '', 300); // Remove after fade
+            }, 5000);
+        }
+
+        function startPolling() {
+            // Start polling only after authentication is confirmed
+            if (userId) {
+                // Initial load
+                loadDownloads();
+                // Set interval for subsequent updates
+                setInterval(loadDownloads, 3000); 
+            }
+        }
+
+        // Initialize application check
+        checkAuth();
+    </script>
+</body>
+</html>
