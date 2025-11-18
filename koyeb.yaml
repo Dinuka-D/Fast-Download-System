@@ -1,0 +1,16 @@
+﻿# Koyeb configuration file
+name: fast-download-system
+type: web
+git:
+  repository: Dinuka-D/Fast-Download-System
+  branch: main
+  build_context: /
+  type: github
+ports:
+  - port: 3001
+    protocol: HTTP
+    public: true
+build:
+  build_command: npm install
+run:
+  run_command: node server.js
