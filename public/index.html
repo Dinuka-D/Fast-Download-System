@@ -3,105 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TorrentDrive - Fast Torrent to Google Drive</title>
+    <title>TorrentDrive - Stream Torrents directly to Google Drive</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Outfit & JetBrains Mono -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body { 
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1f2937, #111827); /* Darker, modern background */
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at center, #111827 0%, #030712 100%);
             min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 800px; margin: 0 auto; }
-        
-        .header { 
-            text-align: center; 
             color: #f9fafb;
-            margin-bottom: 40px;
+            overflow-x: hidden;
         }
-        .header h1 { 
-            font-size: 2.5rem; 
-            margin-bottom: 5px;
-            font-weight: 700;
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
         }
-        .header p { 
-            opacity: 0.8; 
-            font-size: 1rem; 
-            font-weight: 400;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
         }
-        
-        .card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
         }
-        
-        /* Custom status styles */
-        .status {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.55);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            transition: all 0.2s ease-in-out;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        /* Statuses with neon glow */
+        .status-badge {
             font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 6px;
-            display: inline-block;
-            font-size: 0.875rem;
-            margin-top: 5px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.8rem;
+            letter-spacing: 0.025em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        .connecting { background-color: #fef3c7; color: #a16207; }
-        .downloading { background-color: #bfdbfe; color: #1e40af; }
-        .uploading { background-color: #d1fae5; color: #065f46; }
-        .completed { background-color: #dbeafe; color: #1e40af; }
-        .failed { background-color: #fee2e2; color: #991b1b; }
-        .cancelled { background-color: #f3f4f6; color: #4b5563; }
-        
+        .connecting { 
+            background: rgba(245, 158, 11, 0.12); 
+            color: #fbbf24; 
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.1);
+        }
+        .downloading { 
+            background: rgba(59, 130, 246, 0.12); 
+            color: #60a5fa; 
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+        }
+        .uploading { 
+            background: rgba(16, 185, 129, 0.12); 
+            color: #34d399; 
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+        }
+        .completed { 
+            background: rgba(139, 92, 246, 0.12); 
+            color: #a78bfa; 
+            border: 1px solid rgba(139, 92, 246, 0.25);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
+        }
+        .failed { 
+            background: rgba(239, 68, 68, 0.12); 
+            color: #f87171; 
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
+        }
+        .cancelled { 
+            background: rgba(107, 114, 128, 0.12); 
+            color: #9ca3af; 
+            border: 1px solid rgba(107, 114, 128, 0.25);
+        }
+
         .progress-bar-container {
             height: 8px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
             overflow: hidden;
-            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
         }
         .progress-bar {
             height: 100%;
-            background-color: #3b82f6;
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #10b981 100%);
+            border-radius: 999px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
         }
 
-        .auth-prompt {
-            text-align: center;
-            padding: 40px 20px;
+        .glow-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
-        
-        .auth-prompt h2 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: #1f2937;
+        .glow-btn:hover {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased py-10 px-4">
 
-    <div class="container">
+    <!-- Decorative background glowing blobs -->
+    <div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-emerald-500/8 blur-[120px] pointer-events-none"></div>
+    <div class="fixed top-[40%] left-[30%] w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[150px] pointer-events-none"></div>
+
+    <div class="max-w-4xl mx-auto container relative z-10">
         
-        <header class="header">
-            <h1>TorrentDrive</h1>
-            <p>Stream torrents directly to your Google Drive.</p>
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <div class="inline-flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-full mb-4 backdrop-blur-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs font-semibold tracking-wider uppercase text-emerald-400">Cloud Stream Active</span>
+            </div>
+            <h1 class="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 mb-2">
+                TorrentDrive
+            </h1>
+            <p class="text-gray-400 text-lg font-light">
+                Stream torrents directly to Google Drive at cloud gigabit speeds.
+            </p>
         </header>
 
-        <!-- Message/Alert Area -->
-        <div id="message" class="mb-4"></div>
+        <!-- Message Alerts -->
+        <div id="message" class="mb-6"></div>
 
-        <!-- Main Content Area -->
+        <!-- Main Dashboard Card -->
         <div id="app-content">
-            <!-- This will hold either the auth prompt or the main app UI -->
+            <!-- Loading Auth State -->
+            <div class="glass-panel p-10 flex flex-col items-center justify-center text-center">
+                <div class="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-400 rounded-full animate-spin mb-4"></div>
+                <p class="text-gray-400">Verifying secure cloud connection...</p>
+            </div>
         </div>
 
-        <!-- Downloads List -->
-        <h2 id="downloads-header" class="text-xl font-bold text-white mb-3 hidden">Active Transfers</h2>
-        <div id="downloads-list" class="space-y-4">
-            <!-- Downloads will be rendered here -->
+        <!-- Transfers List Section -->
+        <div id="transfers-container" class="mt-8 hidden">
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    Active Transfers
+                    <span id="transfers-count" class="text-xs bg-white/10 border border-white/15 px-2 py-0.5 rounded-full font-medium text-indigo-300">0</span>
+                </h2>
+                <div class="text-xs text-indigo-300/80 font-medium flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+                    Real-time SSE Active
+                </div>
+            </div>
+            <div id="downloads-list" class="space-y-4">
+                <!-- Downloads items rendered dynamically -->
+            </div>
         </div>
 
     </div>
@@ -109,6 +191,26 @@
     <script>
         const API_BASE = '/api';
         let userId = null;
+        let activeTab = 'add';
+        let eventSource = null;
+        let pollingInterval = null;
+
+        // Custom formats for bytes and time
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function formatSpeed(bytesPerSecond) {
+            if (!bytesPerSecond || bytesPerSecond === 0) return '0.00 B/s';
+            const i = Math.floor(Math.log(bytesPerSecond) / Math.log(1024));
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
+            return `${(bytesPerSecond / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+        }
 
         // Utility to handle JSON response errors
         async function handleResponse(response) {
@@ -119,8 +221,7 @@
             return response.json();
         }
 
-        // --- AUTHENTICATION & UI SWITCHING ---
-
+        // Check Auth Status on Startup
         async function checkAuth() {
             try {
                 const response = await fetch(`${API_BASE}/user`);
@@ -129,94 +230,355 @@
                 if (data.user) {
                     userId = data.user.id;
                     renderMainApp(data.user);
-                    startPolling();
+                    document.getElementById('transfers-container').classList.remove('hidden');
+                    connectSSE();
                 } else {
                     renderAuthPrompt();
                 }
             } catch (error) {
-                showMessage(`Authentication check failed: ${error.message}`, 'failed');
+                showMessage(`Cloud verification failed: ${error.message}`, 'failed');
                 renderAuthPrompt();
             }
         }
 
         function renderAuthPrompt() {
-            document.getElementById('downloads-header').classList.add('hidden');
+            document.getElementById('transfers-container').classList.add('hidden');
             document.getElementById('app-content').innerHTML = `
-                <div class="card auth-prompt">
-                    <h2 class="text-gray-800">Sign in to start transferring torrents</h2>
-                    <p class="text-gray-600 mb-6">Connect your Google Drive to enable streaming and storage.</p>
-                    <a href="/auth/google" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                        Sign in with Google
-                    </a>
+                <div class="glass-panel p-10 text-center space-y-6">
+                    <div class="w-16 h-16 bg-gradient-to-tr from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/30">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-2">
+                        <h2 class="text-2xl font-bold tracking-tight text-white">Unlock TorrentDrive</h2>
+                        <p class="text-gray-400 max-w-sm mx-auto font-light">Sign in with your Google Account to authorize seamless high-speed streaming directly into your Google Drive.</p>
+                    </div>
+                    <div>
+                        <a href="/auth/google" class="glow-btn inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg transition duration-200">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                                <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.529-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.988 0-.746-.08-1.32-.176-1.896H12.24z"/>
+                            </svg>
+                            Connect Google Drive
+                        </a>
+                    </div>
                 </div>
             `;
         }
 
         function renderMainApp(user) {
-            document.getElementById('downloads-header').classList.remove('hidden');
-            
             const userInfoHtml = `
-                <div class="flex items-center space-x-4">
-                    <img src="${user.picture}" alt="${user.name}" class="w-10 h-10 rounded-full border-2 border-blue-500">
-                    <div>
-                        <p class="font-medium text-gray-800">${user.name}</p>
-                        <p class="text-sm text-gray-500">${user.email}</p>
+                <div class="flex items-center space-x-3 bg-white/5 border border-white/5 px-4 py-2 rounded-xl">
+                    <img src="${user.picture}" alt="${user.name}" class="w-8 h-8 rounded-full border border-indigo-400/50">
+                    <div class="text-left">
+                        <p class="text-sm font-semibold text-white leading-tight">${user.name}</p>
+                        <p class="text-xs text-gray-400 font-light leading-none">${user.email}</p>
                     </div>
                 </div>
             `;
 
             document.getElementById('app-content').innerHTML = `
-                <div class="card space-y-4">
-                    <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <div class="glass-panel p-6 md:p-8 space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
                         ${userInfoHtml}
-                        <a href="/auth/logout" class="text-sm text-red-500 hover:text-red-700 font-medium">
-                            Logout
+                        <a href="/auth/logout" class="text-sm text-red-400 hover:text-red-300 font-semibold transition px-3 py-1.5 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-xl">
+                            Disconnect Account
                         </a>
                     </div>
-                    <div class="text-sm font-mono text-gray-500 p-2 bg-gray-50 rounded-lg">
-                        User ID: <span class="break-all">${userId}</span>
+
+                    <!-- Dashboard Tabs -->
+                    <div class="flex bg-gray-950/60 p-1.5 rounded-2xl border border-white/5 shadow-inner">
+                        <button id="tab-add" onclick="switchTab('add')" class="flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 bg-indigo-600/90 text-white shadow-md shadow-indigo-600/10">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Add Magnet / Torrent File
+                        </button>
+                        <button id="tab-search" onclick="switchTab('search')" class="flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 text-gray-400 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Search Torrents
+                        </button>
                     </div>
 
-                    <form id="add-link-form" class="flex space-x-2">
-                        <input type="text" id="magnet-link" placeholder="Enter Magnet Link..." required
-                               class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                        <button type="submit" class="px-5 py-3 bg-green-500 text-white font-medium rounded-lg hover:bg-green-600 transition duration-150">
-                            Add Link
-                        </button>
-                    </form>
+                    <!-- Add Torrent content tab -->
+                    <div id="tab-content-add" class="space-y-5">
+                        <form id="add-link-form" class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" id="magnet-link" placeholder="Paste magnet link (magnet:?xt=...)" required
+                                   class="flex-grow p-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition">
+                            <button type="submit" class="glow-btn px-6 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition duration-150 shrink-0 shadow-lg shadow-emerald-500/10">
+                                Start Stream
+                            </button>
+                        </form>
 
-                    <form id="upload-file-form" class="flex items-center space-x-2 border-t pt-4 border-gray-100">
-                        <input type="file" id="torrent-file" name="torrent" accept=".torrent" required
-                               class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <button type="submit" class="px-5 py-3 bg-indigo-500 text-white font-medium rounded-lg hover:bg-indigo-600 transition duration-150">
-                            Upload .torrent
-                        </button>
-                    </form>
+                        <div class="relative flex items-center justify-center py-2">
+                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/5"></div></div>
+                            <span class="relative px-3 bg-[#0d1222] text-xs font-semibold text-gray-500 uppercase tracking-widest">or upload file</span>
+                        </div>
+
+                        <form id="upload-file-form" class="flex flex-col sm:flex-row items-center gap-3">
+                            <input type="file" id="torrent-file" name="torrent" accept=".torrent" required
+                                   class="flex-grow w-full p-3.5 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-300 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-500/10 file:text-indigo-300 hover:file:bg-indigo-500/20 file:transition">
+                            <button type="submit" class="glow-btn w-full sm:w-auto px-6 py-4 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition duration-150 shrink-0 shadow-lg shadow-indigo-500/10">
+                                Upload .torrent
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Search Torrent content tab -->
+                    <div id="tab-content-search" class="hidden space-y-4">
+                        <form id="search-form" class="flex gap-2">
+                            <input type="text" id="search-query" placeholder="Enter keyword to search torrents..." required
+                                   class="flex-grow p-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400 transition">
+                            <button type="submit" class="glow-btn px-6 py-4 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition shrink-0">
+                                Search
+                            </button>
+                        </form>
+                        <div id="search-loading" class="hidden py-10 flex flex-col items-center justify-center text-center">
+                            <div class="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-400 rounded-full animate-spin mb-3"></div>
+                            <p class="text-sm text-gray-400">Searching global databases...</p>
+                        </div>
+                        <div id="search-results" class="max-h-[350px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar hidden">
+                            <!-- Search results appear here -->
+                        </div>
+                    </div>
                 </div>
             `;
             
             document.getElementById('add-link-form').addEventListener('submit', handleAddLink);
             document.getElementById('upload-file-form').addEventListener('submit', handleUploadFile);
 
-            // Handle URL query parameters for error messages after OAuth
+            // Handle URL error param if any
             const urlParams = new URLSearchParams(window.location.search);
             const error = urlParams.get('error');
             const message = urlParams.get('message');
             if (error) {
-                showMessage(`Error during sign-in: ${decodeURIComponent(message)}`, 'failed');
+                showMessage(`Authentication error: ${decodeURIComponent(message)}`, 'failed');
             }
-            // Clean up URL
             history.replaceState(null, '', window.location.pathname);
         }
 
-        // --- HANDLERS ---
+        // Tab selection switching
+        function switchTab(tab) {
+            if (activeTab === tab) return;
+            activeTab = tab;
+            
+            const btnAdd = document.getElementById('tab-add');
+            const btnSearch = document.getElementById('tab-search');
+            const contentAdd = document.getElementById('tab-content-add');
+            const contentSearch = document.getElementById('tab-content-search');
 
+            if (tab === 'add') {
+                btnAdd.className = "flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 bg-indigo-600/90 text-white shadow-md shadow-indigo-600/10";
+                btnSearch.className = "flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 text-gray-400 hover:text-white";
+                contentAdd.classList.remove('hidden');
+                contentSearch.classList.add('hidden');
+            } else {
+                btnSearch.className = "flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 bg-indigo-600/90 text-white shadow-md shadow-indigo-600/10";
+                btnAdd.className = "flex-grow flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition duration-150 text-gray-400 hover:text-white";
+                contentSearch.classList.remove('hidden');
+                contentAdd.classList.add('hidden');
+                
+                // Add event listener to search form once loaded
+                const searchForm = document.getElementById('search-form');
+                if (searchForm) {
+                    searchForm.addEventListener('submit', handleSearch);
+                }
+            }
+        }
+
+        // Real-time EventSource Stream Manager
+        function connectSSE() {
+            if (!userId) return;
+
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            console.log("🔌 Initializing real-time Server-Sent Events stream...");
+            eventSource = new EventSource(`${API_BASE}/downloads/stream`);
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const downloads = JSON.parse(event.data);
+                    renderDownloads(downloads);
+                } catch (error) {
+                    console.error("SSE parse error:", error);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.warn("⚠️ SSE connection lost. Falling back to polling...", error);
+                eventSource.close();
+                eventSource = null;
+                startPollingFallback();
+            };
+        }
+
+        function startPollingFallback() {
+            if (pollingInterval) return;
+            console.log("⏳ Fallback polling started (3s interval)...");
+            loadDownloads(); 
+            pollingInterval = setInterval(loadDownloads, 3000);
+
+            // Re-attempt SSE link in 15 seconds
+            setTimeout(() => {
+                if (!eventSource && userId) {
+                    console.log("🔄 Re-attempting to establish SSE tunnel...");
+                    connectSSE();
+                }
+            }, 15000);
+        }
+
+        async function loadDownloads() {
+            if (!userId) return;
+            try {
+                const response = await fetch(`${API_BASE}/downloads`);
+                const downloads = await handleResponse(response);
+                renderDownloads(downloads);
+            } catch (error) {
+                console.error("Manual polling failed:", error);
+            }
+        }
+
+        // RENDER DOWNLOADS CARDS
+        function renderDownloads(downloads) {
+            const downloadsList = document.getElementById('downloads-list');
+            const countBadge = document.getElementById('transfers-count');
+            
+            // Filter out completed/failed/cancelled that are very old if needed, but display all active
+            const activeTransfers = downloads.filter(d => d.status !== 'cancelled' && d.status !== 'failed');
+            countBadge.textContent = downloads.length;
+
+            if (downloads.length === 0) {
+                downloadsList.innerHTML = `
+                    <div class="glass-panel p-10 text-center border-dashed border-white/10">
+                        <svg class="w-10 h-10 text-gray-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                        </svg>
+                        <p class="text-gray-400 font-light">No active transfers found.</p>
+                        <p class="text-xs text-gray-600 mt-1">Paste a magnet link or search above to initiate a cloud stream.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            downloadsList.innerHTML = downloads.map(download => {
+                const showCancelBtn = !(download.status === 'completed' || download.status === 'failed' || download.status === 'cancelled');
+                
+                // Status rendering strings
+                let statusText = '';
+                let statusClass = download.status;
+
+                switch(download.status) {
+                    case 'downloading':
+                        statusText = `⬇️ Downloading at ${formatSpeed(download.downloadSpeed)} | Peers: ${download.peers || 0}`;
+                        break;
+                    case 'uploading':
+                        statusText = `☁️ Streaming to Google Drive at ${formatSpeed(download.uploadSpeed)} | ETA: ${download.eta || 'Calculating...'}`;
+                        break;
+                    case 'completed':
+                        statusText = `✅ Completed successfully! Safe in your Google Drive`;
+                        break;
+                    case 'failed':
+                        statusText = `❌ Error: ${download.error || 'Server stream failed'}`;
+                        break;
+                    case 'cancelled':
+                        statusText = `🛑 Cancelled by user`;
+                        break;
+                    default:
+                        statusText = `⏳ Connecting to peers...`;
+                        statusClass = 'connecting';
+                }
+
+                // Render detail labels
+                const fileSizeStr = download.fileSize > 0 ? formatBytes(download.fileSize) : '';
+                const fileLabelStr = download.fileName 
+                    ? `<span class="text-xs text-gray-400 font-mono flex items-center gap-1.5 mt-1 bg-white/5 border border-white/5 w-fit px-2 py-0.5 rounded-md">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        ${download.fileName} ${fileSizeStr ? `(${fileSizeStr})` : ''}
+                       </span>` 
+                    : '';
+
+                // If currently uploading specific file in multi-file torrent
+                const currentFileStr = (download.status === 'uploading' && download.currentFile)
+                    ? `<div class="text-xs text-indigo-300 font-mono mt-2 flex items-center gap-1">
+                         <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+                         Streaming file: <span class="text-gray-300 select-all">${download.currentFile}</span>
+                       </div>`
+                    : '';
+
+                // Links
+                const driveLinkHtml = download.driveLink 
+                    ? `<a href="${download.driveLink}" target="_blank" class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 hover:underline mt-3 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-xl transition duration-150">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19.347 14.925l-3.957-6.853h-3.957l3.957 6.853h3.957zm-5.74-6.853H3.65l3.957 6.853h9.997l-3.997-6.853zm-1.28 8.012H2.37l3.957 6.853h9.997l-3.997-6.853z"/>
+                        </svg>
+                        Open in Google Drive
+                       </a>` 
+                    : '';
+
+                return `
+                    <div class="glass-panel p-5 relative overflow-hidden">
+                        <!-- Card background glow on active status -->
+                        ${download.status === 'uploading' ? '<div class="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 blur-xl pointer-events-none"></div>' : ''}
+                        ${download.status === 'downloading' ? '<div class="absolute right-0 top-0 w-24 h-24 bg-blue-500/5 blur-xl pointer-events-none"></div>' : ''}
+                        
+                        <div class="flex justify-between items-start mb-3 gap-4">
+                            <div class="space-y-1 max-w-[75%]">
+                                <h3 class="text-md font-bold text-white leading-tight break-all tracking-tight select-all">${download.name}</h3>
+                                ${fileLabelStr}
+                            </div>
+                            
+                            ${showCancelBtn ? `
+                                <button onclick="handleCancelDownload('${download.infoHash}')" 
+                                        class="px-4 py-1.5 text-xs font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 hover:text-red-300 rounded-xl transition shrink-0">
+                                    Abort Transfer
+                                </button>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${download.progress}%"></div>
+                        </div>
+
+                        <!-- Info & Speeds Footer -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-3 gap-2">
+                            <div class="status-badge ${statusClass}">
+                                ${statusText}
+                            </div>
+                            ${download.progress > 0 ? `<div class="text-xs font-bold text-indigo-300 font-mono bg-indigo-500/10 px-2 py-0.5 rounded">${download.progress}% Completed</div>` : ''}
+                        </div>
+                        
+                        ${currentFileStr}
+                        ${driveLinkHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // HANDLERS
         async function handleAddLink(event) {
             event.preventDefault();
             const link = document.getElementById('magnet-link').value;
             const button = event.submitter;
+            
             button.disabled = true;
-            button.textContent = 'Adding...';
+            button.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Connecting...
+                </div>
+            `;
 
             try {
                 const response = await fetch(`${API_BASE}/add-link`, {
@@ -229,10 +591,10 @@
                 showMessage(data.message, 'completed');
                 document.getElementById('magnet-link').value = ''; 
             } catch (error) {
-                showMessage(`Failed to add link: ${error.message}`, 'failed');
+                showMessage(`Add link failed: ${error.message}`, 'failed');
             } finally {
                 button.disabled = false;
-                button.textContent = 'Add Link';
+                button.textContent = 'Start Stream';
             }
         }
 
@@ -248,19 +610,24 @@
             formData.append('torrent', file);
 
             button.disabled = true;
-            button.textContent = 'Uploading...';
+            button.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Analyzing...
+                </div>
+            `;
 
             try {
                 const response = await fetch(`${API_BASE}/upload-file`, {
                     method: 'POST',
-                    body: formData // No Content-Type header needed for FormData
+                    body: formData
                 });
                 
                 const data = await handleResponse(response);
                 showMessage(data.message, 'completed');
-                fileInput.value = ''; // Clear file input
+                fileInput.value = ''; 
             } catch (error) {
-                showMessage(`Failed to upload file: ${error.message}`, 'failed');
+                showMessage(`File upload failed: ${error.message}`, 'failed');
             } finally {
                 button.disabled = false;
                 button.textContent = 'Upload .torrent';
@@ -268,7 +635,7 @@
         }
 
         async function handleCancelDownload(infoHash) {
-            if (!window.confirm('Are you sure you want to cancel this transfer?')) {
+            if (!window.confirm('Are you sure you want to permanently abort this cloud transfer and purge temporary cache?')) {
                 return;
             }
             
@@ -280,115 +647,108 @@
                 const data = await handleResponse(response);
                 showMessage(data.message, 'cancelled');
             } catch (error) {
-                showMessage(`Failed to cancel transfer: ${error.message}`, 'failed');
+                showMessage(`Cancellation failed: ${error.message}`, 'failed');
             }
         }
 
-        // --- DATA POLLING & RENDERING ---
+        // TORRENT SEARCH IMPLEMENTATION
+        async function handleSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('search-query').value;
+            const loading = document.getElementById('search-loading');
+            const resultsDiv = document.getElementById('search-results');
 
-        function formatSpeed(bytesPerSecond) {
-            if (bytesPerSecond === 0) return '0.00 B/s';
-            const i = Math.floor(Math.log(bytesPerSecond) / Math.log(1024));
-            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
-            return `${(bytesPerSecond / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-        }
-        
-        function getStatusText(download) {
-            switch(download.status) {
-                case 'downloading': return `⬇️ Downloading (${formatSpeed(download.downloadSpeed)}) - ${download.progress}%`;
-                case 'uploading': return `☁️ Uploading to Drive (${formatSpeed(download.uploadSpeed)}) - ${download.progress}%`;
-                case 'completed': return `✅ Completed! Ready in Drive`;
-                case 'failed': return `❌ Failed: ${download.error || 'Unknown error'}`;
-                case 'cancelled': return `🛑 Cancelled`;
-                default: return `⏳ Processing...`;
-            }
-        }
+            loading.classList.remove('hidden');
+            resultsDiv.classList.add('hidden');
+            resultsDiv.innerHTML = '';
 
-        async function loadDownloads() {
             try {
-                // Ensure auth is ready before fetching downloads
-                if (!userId) return;
+                const response = await fetch(`${API_BASE}/search?query=${encodeURIComponent(query)}`);
+                const data = await handleResponse(response);
 
-                const response = await fetch(`${API_BASE}/downloads`);
-                const downloads = await handleResponse(response);
-                
-                const downloadsList = document.getElementById('downloads-list');
-                
-                if (downloads.length === 0) {
-                    downloadsList.innerHTML = '<p class="text-center text-gray-400 p-8">No active transfers. Add a magnet link or .torrent file above!</p>';
+                loading.classList.add('hidden');
+                resultsDiv.classList.remove('hidden');
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500 py-8 font-light">No matching torrents found. Try another keyword!</p>';
                     return;
                 }
 
-                downloadsList.innerHTML = downloads.map(download => `
-                    <div class="card">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-800">${download.name}</h3>
-                                ${download.fileName ? `<p class="text-sm text-gray-500 italic">${download.fileName} (${(download.fileSize / (1024*1024*1024)).toFixed(2)} GB)</p>` : ''}
+                resultsDiv.innerHTML = data.map(item => {
+                    const sizeFormatted = formatBytes(item.size);
+                    return `
+                        <div class="glass-card p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="space-y-1 max-w-[80%]">
+                                <h4 class="text-sm font-semibold text-white truncate max-w-xl select-all" title="${item.name}">${item.name}</h4>
+                                <div class="flex items-center gap-3 text-xs text-gray-400 font-mono">
+                                    <span class="bg-white/5 px-2 py-0.5 rounded text-indigo-300">${sizeFormatted}</span>
+                                    <span class="text-emerald-400">▲ ${item.seeders}</span>
+                                    <span class="text-red-400">▼ ${item.leechers}</span>
+                                </div>
                             </div>
-                            <button onclick="handleCancelDownload('${download.infoHash}')" 
-                                    class="ml-4 px-3 py-1 text-sm bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition duration-150 
-                                    ${(download.status === 'completed' || download.status === 'failed' || download.status === 'cancelled') ? 'hidden' : ''}">
-                                Cancel
+                            <button onclick="addSearchMagnet('${item.magnet}', this)" 
+                                    class="glow-btn px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg transition duration-150 shrink-0">
+                                Add Transfer
                             </button>
                         </div>
-                        
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${download.progress}%"></div>
-                        </div>
-
-                        <div class="status ${download.status} mt-3">
-                            ${getStatusText(download)}
-                            ${download.driveLink ? 
-                                `<br><a href="${download.driveLink}" target="_blank" class="text-blue-600 hover:underline font-normal">🔗 Open in Drive</a>` : ''
-                            }
-                        </div>
-                        
-                        ${(download.status === 'downloading' || download.status === 'uploading') ? `
-                            <div class="text-xs text-gray-400 mt-2">
-                                Peers: ${download.peers} | Up: ${formatSpeed(download.uploadSpeed)}
-                            </div>
-                        ` : ''}
-
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
-                // If the error is due to a network or server issue, don't flood the message area
-                // console.error('Failed to load downloads during polling:', error);
+                loading.classList.add('hidden');
+                showMessage(`Search request failed: ${error.message}`, 'failed');
             }
         }
 
+        async function addSearchMagnet(magnet, button) {
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.innerHTML = `<div class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>`;
+
+            try {
+                const response = await fetch(`${API_BASE}/add-link`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ link: magnet })
+                });
+                
+                const data = await handleResponse(response);
+                showMessage(data.message, 'completed');
+                
+                // Show completed styling on search row button
+                button.textContent = 'Added';
+                button.className = "px-4 py-2 bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg";
+            } catch (error) {
+                showMessage(`Failed to initiate search stream: ${error.message}`, 'failed');
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // Show Toast Notifications
         function showMessage(text, type) {
             const messageDiv = document.getElementById('message');
-            // Remove old messages
             messageDiv.innerHTML = ''; 
 
-            const messageHtml = document.createElement('div');
-            messageHtml.className = `p-4 rounded-lg text-white font-semibold transition-opacity duration-300 shadow-lg 
-                                    ${type === 'failed' ? 'bg-red-500' : 
-                                      type === 'completed' ? 'bg-green-500' : 
-                                      type === 'cancelled' ? 'bg-gray-500' : 'bg-blue-500'}`;
-            messageHtml.textContent = text;
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-2xl text-white font-semibold transition-all duration-300 shadow-xl border flex items-center justify-between gap-3
+                                ${type === 'failed' ? 'bg-red-950/80 border-red-500/30 text-red-300 shadow-red-500/5' : 
+                                  type === 'completed' ? 'bg-emerald-950/80 border-emerald-500/30 text-emerald-300 shadow-emerald-500/5' : 
+                                  type === 'cancelled' ? 'bg-gray-900/90 border-gray-500/30 text-gray-300' : 'bg-blue-950/80 border-blue-500/30 text-blue-300'}`;
             
-            messageDiv.appendChild(messageHtml);
+            toast.innerHTML = `
+                <span class="text-sm tracking-wide font-medium select-all">${text}</span>
+                <button onclick="this.parentElement.remove()" class="text-white/40 hover:text-white transition">✕</button>
+            `;
+            
+            messageDiv.appendChild(toast);
 
             setTimeout(() => {
-                messageHtml.style.opacity = 0;
-                setTimeout(() => messageDiv.innerHTML = '', 300); // Remove after fade
-            }, 5000);
+                toast.style.opacity = 0;
+                setTimeout(() => messageDiv.innerHTML = '', 300);
+            }, 6000);
         }
 
-        function startPolling() {
-            // Start polling only after authentication is confirmed
-            if (userId) {
-                // Initial load
-                loadDownloads();
-                // Set interval for subsequent updates
-                setInterval(loadDownloads, 3000); 
-            }
-        }
-
-        // Initialize application check
+        // Initialize Core Check
         checkAuth();
     </script>
 </body>
