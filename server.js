@@ -447,7 +447,7 @@ app.delete('/api/cancel-download/:infoHash', isAuthenticated, async (req, res) =
         return res.status(503).json({ success: false, error: 'Server is still initializing. Please try again.' });
     }
     
-    const torrent = client.get(infoHash);
+    const torrent = client.torrents.find(t => t.infoHash === infoHash);
     
     // Check Firestore for the download job
     const jobRef = doc(db, `artifacts/${process.env.__app_id}/users/${userId}/downloads`, infoHash);
@@ -514,7 +514,18 @@ function startTorrent(identifier, user) {
         }
         
         // Check if the torrent is already active or being added
-        if (client.get(identifier)) {
+        let targetHash = null;
+        if (typeof identifier === 'string') {
+            if (identifier.startsWith('magnet:')) {
+                const match = identifier.match(/btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/);
+                if (match) targetHash = match[1].toLowerCase();
+            } else if (identifier.length === 40) {
+                targetHash = identifier.toLowerCase();
+            }
+        }
+
+        const isDuplicate = client.torrents.some(t => t.infoHash === targetHash || t.path === identifier);
+        if (isDuplicate) {
             console.warn(`Attempted to add duplicate torrent: ${identifier}`);
             return reject(new Error('This torrent is already active or in progress.'));
         }
