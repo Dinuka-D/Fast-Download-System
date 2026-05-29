@@ -8,7 +8,8 @@ const dotenv = require('dotenv');
 
 // --- 1. FIREBASE IMPORTS ---
 const { initializeApp } = require('firebase/app');
-const { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, onSnapshot } = require('firebase/firestore');
+const firestore = require('firebase/firestore');
+let { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, onSnapshot } = firestore;
 
 dotenv.config();
 
@@ -51,17 +52,131 @@ console.log('Redirect URI:', REDIRECT_URI);
 
 const oauth2Client = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI);
 
-// --- 2. FIREBASE INITIALIZATION ---
+// --- 2. FIREBASE INITIALIZATION & LOCAL DB FALLBACK ---
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY || 'PLACEHOLDER_API_KEY',
     authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'localhost',
     projectId: process.env.FIREBASE_PROJECT_ID || 'torrent-drive-project',
 };
 
-// Initialize Firebase App
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
-// --- END FIREBASE INITIALIZATION ---
+let db;
+let useLocalDb = false;
+
+// Check if Firebase is configured (not using placeholders)
+const isFirebaseConfigured = process.env.FIREBASE_API_KEY && 
+                             process.env.FIREBASE_API_KEY !== 'YOUR_FIREBASE_API_KEY_HERE' &&
+                             process.env.FIREBASE_API_KEY !== 'PLACEHOLDER_API_KEY';
+
+if (isFirebaseConfigured) {
+    try {
+        const firebaseApp = initializeApp(firebaseConfig);
+        db = getFirestore(firebaseApp);
+        console.log("🔥 Firebase Firestore initialized successfully.");
+    } catch (e) {
+        console.warn("⚠️ Firebase init failed, falling back to Local In-Memory DB:", e.message);
+        useLocalDb = true;
+    }
+} else {
+    console.log("ℹ️ Using Local In-Memory Database (No Firebase setup required for local testing!)");
+    useLocalDb = true;
+}
+
+// Local In-Memory database store
+const memoryStore = {
+    users: {},
+    downloads: {}
+};
+
+// SSE listeners registered for real-time updates
+const sseListeners = new Set();
+
+function notifySseListeners() {
+    sseListeners.forEach(listener => {
+        try { listener(); } catch (e) { console.error("SSE notification error:", e); }
+    });
+}
+
+// Mock Firestore functions
+const mockDoc = (dbInstance, collectionPath, id) => {
+    return { path: `${collectionPath}/${id}`, collectionPath, id };
+};
+
+const mockSetDoc = async (docRef, data, options = {}) => {
+    const { collectionPath, id } = docRef;
+    if (collectionPath.includes('downloads')) {
+        memoryStore.downloads[id] = { ...data, infoHash: id };
+        notifySseListeners();
+    } else {
+        memoryStore.users[id] = data;
+    }
+    return true;
+};
+
+const mockGetDoc = async (docRef) => {
+    const { collectionPath, id } = docRef;
+    let data;
+    if (collectionPath.includes('downloads')) {
+        data = memoryStore.downloads[id];
+    } else {
+        data = memoryStore.users[id];
+    }
+    return {
+        exists: () => !!data,
+        data: () => data
+    };
+};
+
+const mockUpdateDoc = async (docRef, data) => {
+    const { collectionPath, id } = docRef;
+    if (collectionPath.includes('downloads')) {
+        memoryStore.downloads[id] = { ...memoryStore.downloads[id], ...data };
+        notifySseListeners();
+    } else {
+        memoryStore.users[id] = { ...memoryStore.users[id], ...data };
+    }
+    return true;
+};
+
+const mockCollection = (dbInstance, collectionPath) => {
+    return { collectionPath };
+};
+
+const mockGetDocs = async (collectionRef) => {
+    const docs = [];
+    Object.values(memoryStore.downloads).forEach(item => {
+        docs.push({ data: () => item });
+    });
+    return docs;
+};
+
+const mockOnSnapshot = (collectionRef, callback) => {
+    const listener = () => {
+        const snapshot = [];
+        Object.values(memoryStore.downloads).forEach(item => {
+            snapshot.push({ data: () => item });
+        });
+        callback(snapshot);
+    };
+    
+    sseListeners.add(listener);
+    listener(); // Initial call
+    
+    return () => {
+        sseListeners.delete(listener);
+    };
+};
+
+// Re-assign imported Firestore functions to mock counterparts if using local DB
+if (useLocalDb) {
+    doc = mockDoc;
+    setDoc = mockSetDoc;
+    getDoc = mockGetDoc;
+    updateDoc = mockUpdateDoc;
+    collection = mockCollection;
+    getDocs = mockGetDocs;
+    onSnapshot = mockOnSnapshot;
+}
+// --- END FIREBASE INITIALIZATION & LOCAL DB FALLBACK ---
 
 
 // === MIDDLEWARE ===
