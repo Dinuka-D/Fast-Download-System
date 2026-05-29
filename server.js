@@ -519,12 +519,13 @@ function startTorrent(identifier, user) {
             return reject(new Error('This torrent is already active or in progress.'));
         }
 
-        client.add(identifier, { path: DOWNLOAD_PATH }, (torrent) => {
+        try {
+            const torrent = client.add(identifier, { path: DOWNLOAD_PATH });
             
             const initialDownload = {
                 userId: user.id,
                 infoHash: torrent.infoHash,
-                name: torrent.name,
+                name: torrent.name || 'Fetching torrent metadata...',
                 status: 'connecting',
                 progress: 0,
                 downloadSpeed: 0,
@@ -534,14 +535,14 @@ function startTorrent(identifier, user) {
                 fileName: null, 
                 error: null,
                 fileSize: 0,
-                eta: 'Calculating...'
+                eta: 'Connecting to peers...'
             };
             
             // --- FIREBASE: Write initial job state ---
             const jobRef = doc(db, `artifacts/${process.env.__app_id}/users/${user.id}/downloads`, torrent.infoHash);
-            setDoc(jobRef, initialDownload).catch(e => console.error("Firestore initial write failed:", e));
+            dbSetDoc(jobRef, initialDownload).catch(e => console.error("Firestore initial write failed:", e));
 
-            console.log(`🟢 Starting new torrent: ${torrent.name}`);
+            console.log(`🟢 Added torrent to client: ${torrent.name || torrent.infoHash}`);
 
             torrent.on('ready', () => {
                 const totalFilesCount = torrent.files.length;
@@ -553,7 +554,7 @@ function startTorrent(identifier, user) {
                     filesCount: totalFilesCount,
                     fileName: torrent.files.length === 1 ? torrent.files[0].name : `${torrent.name} (${totalFilesCount} files)`
                 };
-                updateDoc(jobRef, updateReady).catch(e => console.error("Firestore ready update failed:", e));
+                dbUpdateDoc(jobRef, updateReady).catch(e => console.error("Firestore ready update failed:", e));
                 
                 console.log(`📢 Torrent ready: ${torrent.name} containing ${totalFilesCount} files. Starting Drive upload stream...`);
 
@@ -563,14 +564,14 @@ function startTorrent(identifier, user) {
                         console.log(`✅ Drive Upload Stream FINISHED for: ${torrent.name}`);
                         
                         // Check if cancelled first to avoid overwriting cancelled status
-                        getDoc(jobRef).then((snap) => {
+                        dbGetDoc(jobRef).then((snap) => {
                             if (snap.exists() && snap.data().status === 'cancelled') {
                                 console.log(`🛑 Upload completed but torrent was already cancelled by the user.`);
                                 return;
                             }
                             
                             // Final update to Firestore
-                            updateDoc(jobRef, {
+                            dbUpdateDoc(jobRef, {
                                 status: 'completed',
                                 progress: 100,
                                 uploadSpeed: 0,
@@ -586,13 +587,13 @@ function startTorrent(identifier, user) {
                     })
                     .catch(error => {
                         // Check if cancelled first to avoid overwriting cancelled status
-                        getDoc(jobRef).then((snap) => {
+                        dbGetDoc(jobRef).then((snap) => {
                             if (snap.exists() && snap.data().status === 'cancelled') {
                                 console.log(`🛑 Stream error caught but ignored since status is already cancelled.`);
                                 return;
                             }
                             
-                            updateDoc(jobRef, {
+                            dbUpdateDoc(jobRef, {
                                 status: 'failed',
                                 error: `Drive Upload Failed: ${error.message}`,
                             }).catch(e => console.error("Firestore failure update failed:", e));
@@ -618,7 +619,7 @@ function startTorrent(identifier, user) {
                         status: 'downloading',
                         eta: etaText
                     };
-                    updateDoc(jobRef, updateDownload).catch(e => console.error("Firestore download update failed:", e));
+                    dbUpdateDoc(jobRef, updateDownload).catch(e => console.error("Firestore download update failed:", e));
                 }
             });
 
@@ -628,11 +629,11 @@ function startTorrent(identifier, user) {
 
             torrent.on('error', (err) => {
                 // Check if cancelled first to avoid overwriting cancelled status
-                getDoc(jobRef).then((snap) => {
+                dbGetDoc(jobRef).then((snap) => {
                     if (snap.exists() && snap.data().status === 'cancelled') {
                         return;
                     }
-                    updateDoc(jobRef, {
+                    dbUpdateDoc(jobRef, {
                         status: 'failed',
                         error: err.message,
                     }).catch(e => console.error("Firestore torrent error update failed:", e));
@@ -641,9 +642,9 @@ function startTorrent(identifier, user) {
             });
             
             resolve();
-        }, (err) => {
+        } catch (err) {
             reject(err);
-        });
+        }
     });
 }
 
